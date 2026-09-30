@@ -55,14 +55,13 @@ var linkingWords = map[string]bool{
 func parseRumor(text string) Rumor {
 	words := strings.Fields(text)
 
-	if len(words) < 3 {
+	if len(words) == 0 {
 		return Rumor{
 			original: text,
 			details:  text,
 		}
 	}
 
-	// Look for "is", "was", "are", etc.
 	for i, word := range words {
 		lower := strings.ToLower(word)
 
@@ -76,10 +75,22 @@ func parseRumor(text string) Rumor {
 		}
 	}
 
-	// Normal sentence:
-	// first word = subject
-	// second word = action
-	// rest = details
+
+	if len(words) == 1 {
+		return Rumor{
+			original: text,
+			details:  text,
+		}
+	}
+
+	if len(words) == 2 {
+		return Rumor{
+			original: text,
+			subject:  words[0],
+			action:   words[1],
+		}
+	}
+
 	return Rumor{
 		original: text,
 		subject:  words[0],
@@ -87,6 +98,7 @@ func parseRumor(text string) Rumor {
 		details:  strings.Join(words[2:], " "),
 	}
 }
+
 
 func rumorText(r Rumor) string {
 	if r.subject == "" {
@@ -209,7 +221,6 @@ func makeDetailsBigger(r Rumor) Rumor {
 	return r
 }
 
-
 func changeAction(r Rumor) Rumor {
 
 	switch strings.ToLower(r.action) {
@@ -253,6 +264,58 @@ func changeAction(r Rumor) Rumor {
 	return r
 }
 
+func changeQuantity(r Rumor) Rumor {
+	words := strings.Fields(r.details)
+
+	for i, word := range words {
+		lower := strings.ToLower(word)
+
+		switch lower {
+		case "a":
+			if i+1 < len(words) {
+				words[i] = "two"
+				words[i+1] = pluralize(words[i+1])
+			}
+
+		case "one":
+			if i+1 < len(words) {
+				words[i] = "two"
+				words[i+1] = pluralize(words[i+1])
+			}
+
+		case "two":
+			if i+1 < len(words) {
+				words[i] = "three"
+				words[i+1] = pluralize(words[i+1])
+			}
+
+		case "three":
+			if i+1 < len(words) {
+				words[i] = "five"
+				words[i+1] = pluralize(words[i+1])
+			}
+
+		default:
+			continue
+		}
+
+		r.details = strings.Join(words, " ")
+		return r
+	}
+
+	return r
+}
+
+func pluralize(word string) string {
+	lower := strings.ToLower(word)
+
+	if strings.HasSuffix(lower, "s") {
+		return word
+	}
+
+	return word + "s"
+}
+
 func mutateRumor(r Rumor, generation int) Rumor {
 
 	// First few people usually pass the rumor
@@ -268,7 +331,7 @@ func mutateRumor(r Rumor, generation int) Rumor {
 	// Middle of the gossip chain.
 	if generation <= 12 {
 
-		switch rand.Intn(5) {
+		switch rand.Intn(6) {
 		case 0:
 			return addPrefix(r)
 
@@ -281,6 +344,9 @@ func mutateRumor(r Rumor, generation int) Rumor {
 		case 3:
 			return changeAction(r)
 
+		case 4:
+			return changeQuantity(r)
+
 		default:
 			return r
 		}
@@ -288,7 +354,7 @@ func mutateRumor(r Rumor, generation int) Rumor {
 
 	// The last few people are more likely
 	// to exaggerate the story.
-	switch rand.Intn(5) {
+	switch rand.Intn(6) {
 	case 0:
 		return addTime(r)
 
@@ -305,7 +371,6 @@ func mutateRumor(r Rumor, generation int) Rumor {
 		return r
 	}
 }
-
 
 func main() {
 	rand.Seed(time.Now().UnixNano())
