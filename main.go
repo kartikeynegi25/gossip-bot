@@ -172,26 +172,43 @@ func makeDetailsBigger(r Rumor) Rumor {
 		return r
 	}
 
-	lower := strings.ToLower(r.details)
+	words := strings.Fields(r.details)
 
-	if strings.Contains(lower, "huge") ||
-		strings.Contains(lower, "massive") ||
-		strings.Contains(lower, "expensive") ||
-		strings.Contains(lower, "giant") {
-		return r
+	// We only change adjectives that are already there.
+	// This keeps the original meaning mostly intact.
+	adjectiveChanges := map[string]string{
+		"big":      "huge",
+		"small":    "tiny",
+		"good":     "amazing",
+		"bad":      "terrible",
+		"nice":     "amazing",
+		"new":      "expensive",
+		"old":      "ancient",
+		"fast":     "crazy fast",
+		"slow":     "really slow",
+		"little":   "tiny",
+		"large":    "massive",
+		"massive":  "enormous",
+		"huge":     "enormous",
+		"amazing":  "insane",
+		"terrible": "awful",
 	}
 
-	adjectives := []string{
-		"huge",
-		"massive",
-		"expensive",
-		"giant",
+	for i, word := range words {
+		lower := strings.ToLower(word)
+
+		if newWord, ok := adjectiveChanges[lower]; ok {
+			words[i] = newWord
+			r.details = strings.Join(words, " ")
+			return r
+		}
 	}
 
-	r.details = adjectives[rand.Intn(len(adjectives))] + " " + r.details
-
+	// No obvious adjective was found,
+	// so leave the rumor alone.
 	return r
 }
+
 
 func changeAction(r Rumor) Rumor {
 
@@ -238,20 +255,20 @@ func changeAction(r Rumor) Rumor {
 
 func mutateRumor(r Rumor, generation int) Rumor {
 
-	// Early bots mostly repeat exactly what they heard.
+	// First few people usually pass the rumor
+	// along without changing it.
 	if generation <= 5 {
-		if rand.Intn(4) == 0 {
+		if rand.Intn(5) == 0 {
 			return addPrefix(r)
 		}
 
 		return r
 	}
 
-	// Middle of the chain.
+	// Middle of the gossip chain.
 	if generation <= 12 {
 
 		switch rand.Intn(5) {
-
 		case 0:
 			return addPrefix(r)
 
@@ -269,9 +286,9 @@ func mutateRumor(r Rumor, generation int) Rumor {
 		}
 	}
 
-	// Later bots are more likely to exaggerate.
+	// The last few people are more likely
+	// to exaggerate the story.
 	switch rand.Intn(5) {
-
 	case 0:
 		return addTime(r)
 
@@ -288,6 +305,7 @@ func mutateRumor(r Rumor, generation int) Rumor {
 		return r
 	}
 }
+
 
 func main() {
 	rand.Seed(time.Now().UnixNano())
