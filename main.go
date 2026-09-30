@@ -1,0 +1,347 @@
+package main
+
+import (
+	"bufio"
+	"fmt"
+	"math/rand"
+	"os"
+	"strings"
+	"time"
+)
+
+var botNames = []string{
+	"Kartikey",
+	"Rohit",
+	"Siddharth",
+	"Amit",
+	"Ankit",
+	"Rahul",
+	"Vikram",
+	"Nikhil",
+	"Arjun",
+	"Rakesh",
+	"Deepak",
+	"Saurabh",
+	"Manish",
+	"Ravi",
+	"Ayush",
+	"Aditya",
+	"Pranav",
+	"Harsh",
+	"Aakash",
+	"Shubham",
+}
+
+type Rumor struct {
+	original string
+
+	subject string
+	action  string
+	details string
+
+	prefix string
+	time   string
+	drama  string
+}
+
+var linkingWords = map[string]bool{
+	"is":   true,
+	"am":   true,
+	"are":  true,
+	"was":  true,
+	"were": true,
+}
+
+func parseRumor(text string) Rumor {
+	words := strings.Fields(text)
+
+	if len(words) < 3 {
+		return Rumor{
+			original: text,
+			details:  text,
+		}
+	}
+
+	// Look for "is", "was", "are", etc.
+	for i, word := range words {
+		lower := strings.ToLower(word)
+
+		if linkingWords[lower] && i > 0 {
+			return Rumor{
+				original: text,
+				subject:  strings.Join(words[:i], " "),
+				action:   lower,
+				details:  strings.Join(words[i+1:], " "),
+			}
+		}
+	}
+
+	// Normal sentence:
+	// first word = subject
+	// second word = action
+	// rest = details
+	return Rumor{
+		original: text,
+		subject:  words[0],
+		action:   words[1],
+		details:  strings.Join(words[2:], " "),
+	}
+}
+
+func rumorText(r Rumor) string {
+	if r.subject == "" {
+		return r.details
+	}
+
+	text := r.subject + " " + r.action
+
+	if r.details != "" {
+		text += " " + r.details
+	}
+
+	if r.time != "" {
+		text += " " + r.time
+	}
+
+	if r.drama != "" {
+		text += " " + r.drama
+	}
+
+	if r.prefix != "" {
+		text = r.prefix + " " + text
+	}
+
+	return text
+}
+
+func addPrefix(r Rumor) Rumor {
+	if r.prefix != "" {
+		return r
+	}
+
+	prefixes := []string{
+		"Apparently,",
+		"I heard",
+		"People are saying",
+		"Someone told me",
+	}
+
+	r.prefix = prefixes[rand.Intn(len(prefixes))]
+
+	return r
+}
+
+func addTime(r Rumor) Rumor {
+	if r.time != "" {
+		return r
+	}
+
+	times := []string{
+		"yesterday",
+		"last night",
+		"earlier",
+		"this morning",
+		"recently",
+	}
+
+	r.time = times[rand.Intn(len(times))]
+
+	return r
+}
+
+func addDrama(r Rumor) Rumor {
+	if r.drama != "" {
+		return r
+	}
+
+	drama := []string{
+		"and didn't tell anyone",
+		"and refused to explain",
+		"and everyone noticed",
+		"and nobody knows why",
+		"and people were shocked",
+	}
+
+	r.drama = drama[rand.Intn(len(drama))]
+
+	return r
+}
+
+func makeDetailsBigger(r Rumor) Rumor {
+	if r.details == "" {
+		return r
+	}
+
+	lower := strings.ToLower(r.details)
+
+	if strings.Contains(lower, "huge") ||
+		strings.Contains(lower, "massive") ||
+		strings.Contains(lower, "expensive") ||
+		strings.Contains(lower, "giant") {
+		return r
+	}
+
+	adjectives := []string{
+		"huge",
+		"massive",
+		"expensive",
+		"giant",
+	}
+
+	r.details = adjectives[rand.Intn(len(adjectives))] + " " + r.details
+
+	return r
+}
+
+func changeAction(r Rumor) Rumor {
+
+	switch strings.ToLower(r.action) {
+
+	case "ate":
+		r.action = "had"
+
+	case "had":
+		r.action = "ate"
+
+	case "bought":
+		r.action = "got"
+
+	case "got":
+		r.action = "bought"
+
+	case "saw":
+		r.action = "noticed"
+
+	case "noticed":
+		r.action = "saw"
+
+	case "found":
+		r.action = "discovered"
+
+	case "discovered":
+		r.action = "found"
+
+	case "went":
+		r.action = "visited"
+
+	case "visited":
+		r.action = "went"
+
+	default:
+		// We don't know this verb,
+		// so leave it alone.
+		return r
+	}
+
+	return r
+}
+
+func mutateRumor(r Rumor, generation int) Rumor {
+
+	// Early bots mostly repeat exactly what they heard.
+	if generation <= 5 {
+		if rand.Intn(4) == 0 {
+			return addPrefix(r)
+		}
+
+		return r
+	}
+
+	// Middle of the chain.
+	if generation <= 12 {
+
+		switch rand.Intn(5) {
+
+		case 0:
+			return addPrefix(r)
+
+		case 1:
+			return addTime(r)
+
+		case 2:
+			return makeDetailsBigger(r)
+
+		case 3:
+			return changeAction(r)
+
+		default:
+			return r
+		}
+	}
+
+	// Later bots are more likely to exaggerate.
+	switch rand.Intn(5) {
+
+	case 0:
+		return addTime(r)
+
+	case 1:
+		return makeDetailsBigger(r)
+
+	case 2:
+		return changeAction(r)
+
+	case 3:
+		return addDrama(r)
+
+	default:
+		return r
+	}
+}
+
+func main() {
+	rand.Seed(time.Now().UnixNano())
+
+	fmt.Println("========================================")
+	fmt.Println("          GOSSIP MUTATOR BOT")
+	fmt.Println("========================================")
+	fmt.Println()
+
+	reader := bufio.NewReader(os.Stdin)
+
+	fmt.Print("Enter a gossip: ")
+
+	input, err := reader.ReadString('\n')
+
+	if err != nil {
+		fmt.Println("Could not read the gossip.")
+		return
+	}
+
+	input = strings.TrimSpace(input)
+
+	if input == "" {
+		fmt.Println("Please enter something.")
+		return
+	}
+
+	rumor := parseRumor(input)
+
+	fmt.Println()
+	fmt.Println("Starting rumor:")
+	fmt.Println(input)
+	fmt.Println()
+	fmt.Println("----------------------------------------")
+
+	for i := 0; i < len(botNames); i++ {
+
+		time.Sleep(500 * time.Millisecond)
+
+		rumor = mutateRumor(rumor, i+1)
+
+		fmt.Printf(
+			"%s whispers: %s\n",
+			botNames[i],
+			rumorText(rumor),
+		)
+	}
+
+	fmt.Println()
+	fmt.Println("----------------------------------------")
+	fmt.Println("              FINAL RUMOR")
+	fmt.Println("----------------------------------------")
+	fmt.Println(rumorText(rumor))
+	fmt.Println()
+	fmt.Println("And that's how gossip spreads 💀")
+	fmt.Println("========================================")
+}
